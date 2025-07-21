@@ -59,6 +59,8 @@ import android.widget.Toast;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
@@ -118,6 +120,10 @@ public class Menu {
     ScrollView scrollView;
     boolean stopChecking, overlayRequired;
     Context getContext;
+    
+    // Performance optimization: Use shared thread pool and handler
+    private static ExecutorService executorService;
+    private Handler mainHandler;
 
     //initialize methods from the native library
     native void Init(Context context, TextView title, TextView subTitle);
@@ -144,6 +150,12 @@ public class Menu {
 
         getContext = context;
         Preferences.context = context;
+        
+        // Initialize performance optimizations
+        if (executorService == null || executorService.isShutdown()) {
+            executorService = Executors.newCachedThreadPool();
+        }
+        mainHandler = new Handler(Looper.getMainLooper());
         rootFrame = new FrameLayout(context); // Global markup
         rootFrame.setOnTouchListener(onTouchListener());
         mRootContainer = new RelativeLayout(context); // Markup on which two markups of the icon and the menu itself will be placed
@@ -291,51 +303,52 @@ public class Menu {
                         menuButtons[j].setBackground(bg);
                     }
 
-                    // Process menu change in background thread to prevent UI freeze
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                // Call native method to handle menu selection
-                                onMenuSelected(menuIndex);
+                    // Use cached executor for better performance
+                    executorService.execute(() -> {
+                        try {
+                            // Call native method to handle menu selection
+                            onMenuSelected(menuIndex);
 
-                                // Update UI on main thread
-                                new Handler(getContext.getMainLooper()).post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        try {
-                                            // Clear and refresh menu content
-                                            mods.removeAllViews();
-                                            featureList(GetFeatureList(), mods);
-                                            scrollView.scrollTo(0, 0);
-                                        } catch (Exception e) {
-                                            Log.e(TAG, "Error refreshing menu content: " + e.getMessage());
-                                        } finally {
-                                            // Re-enable buttons
-                                            for (Button btn : menuButtons) {
-                                                btn.setEnabled(true);
-                                                btn.setAlpha(1.0f);
-                                            }
-                                            isProcessing = false;
-                                        }
+                            // Update UI on main thread with optimized operations
+                            mainHandler.post(() -> {
+                                try {
+                                    // Clear and refresh menu content efficiently
+                                    if (mods.getChildCount() > 0) {
+                                        mods.removeAllViews();
                                     }
-                                });
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error in menu selection: " + e.getMessage());
-                                // Re-enable buttons on error
-                                new Handler(getContext.getMainLooper()).post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        for (Button btn : menuButtons) {
-                                            btn.setEnabled(true);
-                                            btn.setAlpha(1.0f);
-                                        }
-                                        isProcessing = false;
+                                    
+                                    // Get features and populate
+                                    String[] features = GetFeatureList();
+                                    if (features != null && features.length > 0) {
+                                        featureList(features, mods);
                                     }
-                                });
-                            }
+                                    
+                                    // Smooth scroll to top
+                                    scrollView.smoothScrollTo(0, 0);
+                                    
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error refreshing menu content", e);
+                                } finally {
+                                    // Re-enable buttons efficiently
+                                    for (Button btn : menuButtons) {
+                                        btn.setEnabled(true);
+                                        btn.setAlpha(1.0f);
+                                    }
+                                    isProcessing = false;
+                                }
+                            });
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error in menu selection", e);
+                            // Re-enable buttons on error
+                            mainHandler.post(() -> {
+                                for (Button btn : menuButtons) {
+                                    btn.setEnabled(true);
+                                    btn.setAlpha(1.0f);
+                                }
+                                isProcessing = false;
+                            });
                         }
-                    }).start();
+                    });
                 }
             });
 
@@ -647,9 +660,10 @@ public class Menu {
     public void ShowMenu() {
         rootFrame.addView(mRootContainer);
 
-        final Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
+        // Use shared main handler with optimized delay
+        mainHandler.postDelayed(new Runnable() {
             boolean viewLoaded = false;
+            private static final long CHECK_INTERVAL = 800; // Increased interval to reduce CPU usage
 
             @Override
             public void run() {
@@ -657,17 +671,23 @@ public class Menu {
                 //Comment the if-else code out except startService if you want to run the app and test preferences
                 if (Preferences.loadPref && !IsGameLibLoaded() && !stopChecking) {
                     if (!viewLoaded) {
-                        Category(mods, "Save preferences was been enabled. Waiting for game lib to be loaded...\n\nForce load menu may not apply mods instantly. You would need to reactivate them again");
+                        Category(mods, "Save preferences enabled. Waiting for game lib to be loaded...\n\nForce load menu may not apply mods instantly. You would need to reactivate them again");
                         Button(mods, -100, "Force load menu");
                         viewLoaded = true;
                     }
-                    handler.postDelayed(this, 600);
+                    mainHandler.postDelayed(this, CHECK_INTERVAL);
                 } else {
-                    mods.removeAllViews();
-                    featureList(GetFeatureList(), mods);
+                    // Efficiently clear and populate
+                    if (mods.getChildCount() > 0) {
+                        mods.removeAllViews();
+                    }
+                    String[] features = GetFeatureList();
+                    if (features != null && features.length > 0) {
+                        featureList(features, mods);
+                    }
                 }
             }
-        }, 500);
+        }, 300); // Reduced initial delay
     }
 
     @SuppressLint("WrongConstant")
@@ -1103,14 +1123,9 @@ public class Menu {
                     clipboard.setPrimaryClip(clip);
                     Toast.makeText(getContext, "Text copied to clipboard!", Toast.LENGTH_SHORT).show();
 
-                    // Visual feedback
+                    // Visual feedback with shared handler
                     copyButton.setText("✓");
-                    new Handler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            copyButton.setText("📋");
-                        }
-                    }, 1000);
+                    mainHandler.postDelayed(() -> copyButton.setText("📋"), 1000);
                 } catch (Exception e) {
                     Log.e(TAG, "Error copying text to clipboard: " + e.getMessage());
                 }
@@ -1718,17 +1733,55 @@ public class Menu {
             rootFrame.setVisibility(view);
         }
     }
+    
+    /**
+     * Get root frame for visibility checks
+     */
+    public FrameLayout getRootFrame() {
+        return rootFrame;
+    }
 
     public void onDestroy() {
-        if (rootFrame != null) {
-            try {
-                mWindowManager.removeView(rootFrame);
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "Error removing view: " + e.getMessage());
-                // View not attached
-            } catch (Exception e) {
-                Log.e(TAG, "General error during onDestroy: " + e.getMessage());
+        try {
+            // Clean up handlers to prevent memory leaks
+            if (mainHandler != null) {
+                mainHandler.removeCallbacksAndMessages(null);
             }
+            
+            // Clean up root frame
+            if (rootFrame != null) {
+                try {
+                    if (mWindowManager != null) {
+                        mWindowManager.removeView(rootFrame);
+                    }
+                } catch (IllegalArgumentException e) {
+                    Log.e(TAG, "View not attached to window manager", e);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error removing view from window manager", e);
+                }
+                rootFrame = null;
+            }
+            
+            // Clean up menu components
+            if (menu != null) {
+                menu = null;
+            }
+            
+            // Clean up scroll view
+            if (scrollView != null) {
+                scrollView = null;
+            }
+            
+            // Clean up layouts
+            mods = null;
+            mExpanded = null;
+            mCollapsed = null;
+            mRootContainer = null;
+            
+            Log.d(TAG, "Menu destroyed and cleaned up");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error during menu cleanup", e);
         }
     }
 }

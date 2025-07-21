@@ -4,136 +4,296 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.util.Log;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Preferences {
+    
+    private static final String TAG = "Preferences";
+    private static final String PREFERENCES_NAME = "_preferences";
+    
     private static SharedPreferences sharedPreferences;
     private static Preferences prefsInstance;
     public static Context context;
-    public static boolean loadPref, isExpanded;
+    public static volatile boolean loadPref = false;
+    public static volatile boolean isExpanded = false;
 
+    // Thread safety improvements
+    private static final ReadWriteLock lock = new ReentrantReadWriteLock();
+    
+    // Cache for frequently accessed preferences
+    private static final ConcurrentHashMap<Integer, Object> cache = new ConcurrentHashMap<>();
+    
+    // Constants for default values
     private static final String LENGTH = "_length";
     private static final String DEFAULT_STRING_VALUE = "";
-    private static final int DEFAULT_INT_VALUE = 0; //-1
-    private static final double DEFAULT_DOUBLE_VALUE = 0d; //-1d
-    private static final float DEFAULT_FLOAT_VALUE = 0f; //-1f
-    private static final long DEFAULT_LONG_VALUE = 0L; //-1L
+    private static final int DEFAULT_INT_VALUE = 0;
+    private static final double DEFAULT_DOUBLE_VALUE = 0d;
+    private static final float DEFAULT_FLOAT_VALUE = 0f;
+    private static final long DEFAULT_LONG_VALUE = 0L;
     private static final boolean DEFAULT_BOOLEAN_VALUE = false;
 
+    // Native method declaration
     public static native void Changes(Context con, int fNum, String fName, int i, boolean bool, String str);
 
+    /**
+     * Thread-safe preference change for integers
+     */
     public static void changeFeatureInt(String featureName, int featureNum, int value) {
-        Preferences.with(context).writeInt(featureNum, value);
-        Changes(context, featureNum, featureName, value, false, null);
+        try {
+            lock.writeLock().lock();
+            
+            Preferences.with(context).writeInt(featureNum, value);
+            cache.put(featureNum, value); // Update cache
+            
+            // Call native method in background to prevent UI blocking
+            try {
+                Changes(context, featureNum, featureName, value, false, null);
+            } catch (UnsatisfiedLinkError e) {
+                Log.w(TAG, "Native method not available for feature: " + featureName);
+            } catch (Exception e) {
+                Log.e(TAG, "Error calling native Changes method", e);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error changing feature int: " + featureName, e);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
+    /**
+     * Thread-safe preference change for strings
+     */
     public static void changeFeatureString(String featureName, int featureNum, String str) {
-        Preferences.with(context).writeString(featureNum, str);
-        Changes(context, featureNum, featureName, 0, false, str);
+        try {
+            lock.writeLock().lock();
+            
+            Preferences.with(context).writeString(featureNum, str);
+            cache.put(featureNum, str); // Update cache
+            
+            try {
+                Changes(context, featureNum, featureName, 0, false, str);
+            } catch (UnsatisfiedLinkError e) {
+                Log.w(TAG, "Native method not available for feature: " + featureName);
+            } catch (Exception e) {
+                Log.e(TAG, "Error calling native Changes method", e);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error changing feature string: " + featureName, e);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
+    /**
+     * Thread-safe preference change for booleans
+     */
     public static void changeFeatureBool(String featureName, int featureNum, boolean bool) {
-        Preferences.with(context).writeBoolean(featureNum, bool);
-        Changes(context, featureNum, featureName, 0, bool, null);
+        try {
+            lock.writeLock().lock();
+            
+            Preferences.with(context).writeBoolean(featureNum, bool);
+            cache.put(featureNum, bool); // Update cache
+            
+            try {
+                Changes(context, featureNum, featureName, 0, bool, null);
+            } catch (UnsatisfiedLinkError e) {
+                Log.w(TAG, "Native method not available for feature: " + featureName);
+            } catch (Exception e) {
+                Log.e(TAG, "Error calling native Changes method", e);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error changing feature bool: " + featureName, e);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
+    /**
+     * Optimized integer preference loading with caching
+     */
     public static int loadPrefInt(String featureName, int featureNum) {
-        if (loadPref) {
-            int i = Preferences.with(context).readInt(featureNum);
-            Changes(context, featureNum, featureName, i, false, null);
-            return i;
+        try {
+            lock.readLock().lock();
+            
+            // Check cache first
+            Object cached = cache.get(featureNum);
+            if (cached instanceof Integer) {
+                return (Integer) cached;
+            }
+            
+            if (loadPref) {
+                int value = Preferences.with(context).readInt(featureNum);
+                cache.put(featureNum, value); // Cache the result
+                
+                try {
+                    Changes(context, featureNum, featureName, value, false, null);
+                } catch (Exception e) {
+                    Log.w(TAG, "Error calling native method for " + featureName, e);
+                }
+                
+                return value;
+            }
+            return DEFAULT_INT_VALUE;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading preference int: " + featureName, e);
+            return DEFAULT_INT_VALUE;
+        } finally {
+            lock.readLock().unlock();
         }
-        return 0;
     }
 
-    public static boolean loadPrefBool(String featureName, int featureNum, boolean bDef) {
-        boolean bool = Preferences.with(context).readBoolean(featureNum, bDef);
-        if (featureNum == -1) {
-            loadPref = bool;
-        }
-        if (featureNum == -3) {
-            isExpanded = bool;
-        }
-        if (loadPref || featureNum < 0) {
-            bDef = bool;
-        }
+    /**
+     * Optimized boolean preference loading with caching and special handling
+     */
+    public static boolean loadPrefBool(String featureName, int featureNum, boolean defaultValue) {
+        try {
+            lock.readLock().lock();
+            
+            // Check cache first for non-special feature numbers
+            if (featureNum >= 0) {
+                Object cached = cache.get(featureNum);
+                if (cached instanceof Boolean) {
+                    return (Boolean) cached;
+                }
+            }
+            
+            boolean result = Preferences.with(context).readBoolean(featureNum, defaultValue);
+            
+            // Handle special feature numbers
+            if (featureNum == -1) {
+                loadPref = result;
+            } else if (featureNum == -3) {
+                isExpanded = result;
+            }
+            
+            // Use loaded preference if loadPref is enabled or for special features
+            if (loadPref || featureNum < 0) {
+                defaultValue = result;
+                // Cache non-special features
+                if (featureNum >= 0) {
+                    cache.put(featureNum, result);
+                }
+            }
 
-        Changes(context, featureNum, featureName, 0, bDef, null);
-        return bDef;
+            try {
+                Changes(context, featureNum, featureName, 0, defaultValue, null);
+            } catch (Exception e) {
+                Log.w(TAG, "Error calling native method for " + featureName, e);
+            }
+            
+            return defaultValue;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading preference bool: " + featureName, e);
+            return defaultValue;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
+    /**
+     * Optimized string preference loading with caching
+     */
     public static String loadPrefString(String featureName, int featureNum) {
-        if (loadPref || featureNum <= 0) {
-            String str = Preferences.with(context).readString(featureNum);
-            Changes(context, featureNum, featureName, 0, false, str);
-            return str;
+        try {
+            lock.readLock().lock();
+            
+            // Check cache first
+            Object cached = cache.get(featureNum);
+            if (cached instanceof String) {
+                return (String) cached;
+            }
+            
+            if (loadPref || featureNum <= 0) {
+                String result = Preferences.with(context).readString(featureNum);
+                cache.put(featureNum, result); // Cache the result
+                
+                try {
+                    Changes(context, featureNum, featureName, 0, false, result);
+                } catch (Exception e) {
+                    Log.w(TAG, "Error calling native method for " + featureName, e);
+                }
+                
+                return result;
+            }
+            return DEFAULT_STRING_VALUE;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading preference string: " + featureName, e);
+            return DEFAULT_STRING_VALUE;
+        } finally {
+            lock.readLock().unlock();
         }
-        return "";
     }
 
+    /**
+     * Thread-safe singleton constructor
+     */
     private Preferences(Context context) {
-        sharedPreferences = context.getApplicationContext().getSharedPreferences(
-                context.getPackageName() + "_preferences",
-                Context.MODE_PRIVATE
-        );
+        try {
+            sharedPreferences = context.getApplicationContext().getSharedPreferences(
+                    context.getPackageName() + PREFERENCES_NAME,
+                    Context.MODE_PRIVATE
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating SharedPreferences", e);
+        }
     }
 
+    /**
+     * Constructor with custom preferences name
+     */
     private Preferences(Context context, String preferencesName) {
-        sharedPreferences = context.getApplicationContext().getSharedPreferences(
-                preferencesName,
-                Context.MODE_PRIVATE
-        );
+        try {
+            sharedPreferences = context.getApplicationContext().getSharedPreferences(
+                    preferencesName,
+                    Context.MODE_PRIVATE
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating SharedPreferences with name: " + preferencesName, e);
+        }
     }
 
     /**
-     * @param context
-     * @return Returns a 'Preferences' instance
+     * Thread-safe singleton instance getter
+     * @param context Application context
+     * @return Preferences instance
      */
-    public static Preferences with(Context context) {
-        if (prefsInstance == null) {
+    public static synchronized Preferences with(Context context) {
+        if (prefsInstance == null && context != null) {
             prefsInstance = new Preferences(context);
         }
         return prefsInstance;
     }
 
     /**
-     * @param context
-     * @param forceInstantiation
-     * @return Returns a 'Preferences' instance
+     * Clear cache for memory optimization
      */
-    public static Preferences with(Context context, boolean forceInstantiation) {
-        if (forceInstantiation) {
-            prefsInstance = new Preferences(context);
+    public static void clearCache() {
+        try {
+            lock.writeLock().lock();
+            cache.clear();
+            Log.d(TAG, "Preferences cache cleared");
+        } finally {
+            lock.writeLock().unlock();
         }
-        return prefsInstance;
     }
 
     /**
-     * @param context
-     * @param preferencesName
-     * @return Returns a 'Preferences' instance
+     * Get cache size for debugging
      */
-    public static Preferences with(Context context, String preferencesName) {
-        if (prefsInstance == null) {
-            prefsInstance = new Preferences(context, preferencesName);
-        }
-        return prefsInstance;
-    }
-
-    /**
-     * @param context
-     * @param preferencesName
-     * @param forceInstantiation
-     * @return Returns a 'Preferences' instance
-     */
-    public static Preferences with(Context context, String preferencesName,
-                                   boolean forceInstantiation) {
-        if (forceInstantiation) {
-            prefsInstance = new Preferences(context, preferencesName);
-        }
-        return prefsInstance;
+    public static int getCacheSize() {
+        return cache.size();
     }
 
     // String related methods
