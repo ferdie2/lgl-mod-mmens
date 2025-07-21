@@ -3,6 +3,7 @@
 package com.android.support;
 
 import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -34,6 +35,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebView;
@@ -163,73 +165,143 @@ public class Menu {
         mCollapsed.setVisibility(View.VISIBLE);
         mCollapsed.setAlpha(ICON_ALPHA);
 
-        //********** Premium Galaxy Dark Menu Container **********
+        //********** Enhanced Premium Galaxy Dark Menu Container **********
         mExpanded = new LinearLayout(context); // Menu markup (when the menu is expanded)
         mExpanded.setVisibility(View.GONE);
         mExpanded.setOrientation(LinearLayout.VERTICAL);
-        mExpanded.setPadding(4, 4, 4, 4); // Premium padding
+        mExpanded.setPadding(6, 6, 6, 6); // Enhanced padding for modern look
         mExpanded.setLayoutParams(new LinearLayout.LayoutParams(dp(MENU_WIDTH), WRAP_CONTENT));
 
-        // Premium gradient background with border
+        // Enhanced gradient background with modern styling
         GradientDrawable gdMenuBody = new GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            new int[]{GRADIENT_START, GRADIENT_END}
+            GradientDrawable.Orientation.TL_BR, // Diagonal gradient for depth
+            new int[]{GRADIENT_START, MENU_BG_COLOR, GRADIENT_END}
         );
-        gdMenuBody.setCornerRadius(MENU_CORNER);
-        gdMenuBody.setStroke(2, BORDER_COLOR); // Purple border
+        gdMenuBody.setCornerRadius(MENU_CORNER + 4); // Slightly more rounded
+        gdMenuBody.setStroke(3, BORDER_COLOR); // Thicker border for premium look
+        
+        // Enhanced shadow and elevation for modern depth
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            mExpanded.setElevation(8f); // Material design elevation
+            mExpanded.setElevation(12f); // Increased elevation
+            mExpanded.setTranslationZ(4f); // Additional depth
         }
         mExpanded.setBackground(gdMenuBody);
+        
+        // Add subtle inner glow effect
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mExpanded.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+            mExpanded.setClipToOutline(true);
+        }
 
-        //********** The icon to open mod menu **********
+        //********** Enhanced Premium Icon to open mod menu **********
         startimage = new ImageView(context);
         startimage.setLayoutParams(new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT));
-        int applyDimension = (int) TypedValue.applyDimension(1, ICON_SIZE, context.getResources().getDisplayMetrics()); //Icon size
+        int applyDimension = (int) TypedValue.applyDimension(1, ICON_SIZE + 8, context.getResources().getDisplayMetrics()); // Larger icon
         startimage.getLayoutParams().height = applyDimension;
         startimage.getLayoutParams().width = applyDimension;
-        //startimage.requestLayout();
         startimage.setScaleType(ImageView.ScaleType.FIT_XY);
+        
+        // Enhanced icon styling with modern effects
         byte[] decode = Base64.decode(Icon(), 0);
         startimage.setImageBitmap(BitmapFactory.decodeByteArray(decode, 0, decode.length));
-        ((ViewGroup.MarginLayoutParams) startimage.getLayoutParams()).topMargin = convertDipToPixels(10);
-        //Initialize event handlers for buttons, etc.
+        
+        // Add modern circular background
+        GradientDrawable iconBg = new GradientDrawable();
+        iconBg.setShape(GradientDrawable.OVAL);
+        iconBg.setColor(Color.parseColor("#BB86FC")); // Purple glow background
+        iconBg.setStroke(3, Color.parseColor("#FFFFFF")); // White border
+        startimage.setBackground(iconBg);
+        
+        // Add modern elevation and shadow
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            startimage.setElevation(8f);
+            startimage.setTranslationZ(4f);
+        }
+        
+        // Better positioning
+        ((ViewGroup.MarginLayoutParams) startimage.getLayoutParams()).topMargin = convertDipToPixels(12);
+        ((ViewGroup.MarginLayoutParams) startimage.getLayoutParams()).setMargins(
+            convertDipToPixels(4), convertDipToPixels(12), convertDipToPixels(4), convertDipToPixels(4)
+        );
+        
+        // Enhanced interaction
         startimage.setOnTouchListener(onTouchListener());
         startimage.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
-                mCollapsed.setVisibility(View.GONE);
-                mExpanded.setVisibility(View.VISIBLE);
+                // Add smooth transition animation
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                    mCollapsed.animate().alpha(0f).setDuration(200).start();
+                    mExpanded.setAlpha(0f);
+                    mExpanded.setVisibility(View.VISIBLE);
+                    mExpanded.animate().alpha(1f).setDuration(300).start();
+                } else {
+                    mCollapsed.setVisibility(View.GONE);
+                    mExpanded.setVisibility(View.VISIBLE);
+                }
             }
         });
 
-        //********** The icon in Webview to open mod menu **********
-        WebView wView = new WebView(context); //Icon size width=\"50\" height=\"50\"
+        //********** Enhanced Premium WebView Icon to open mod menu **********
+        WebView wView = new WebView(context);
         wView.setLayoutParams(new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT));
-        int applyDimension2 = (int) TypedValue.applyDimension(1, ICON_SIZE, context.getResources().getDisplayMetrics()); //Icon size
+        int applyDimension2 = (int) TypedValue.applyDimension(1, ICON_SIZE + 8, context.getResources().getDisplayMetrics()); // Larger icon
         wView.getLayoutParams().height = applyDimension2;
         wView.getLayoutParams().width = applyDimension2;
-        wView.loadData("<html>" +
-                "<head></head>" +
-                "<body style=\"margin: 0; padding: 0\">" +
-                "<img src=\"" + IconWebViewData() + "\" width=\"" + ICON_SIZE + "\" height=\"" + ICON_SIZE + "\" >" +
+        
+        // Enhanced WebView HTML with modern styling
+        String iconHtml = "<html>" +
+                "<head>" +
+                "<style>" +
+                "body { margin: 0; padding: 8px; background: linear-gradient(45deg, #BB86FC, #9C5AFF); border-radius: 50%; border: 3px solid #FFFFFF; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }" +
+                "img { width: " + (ICON_SIZE - 4) + "px; height: " + (ICON_SIZE - 4) + "px; border-radius: 50%; }" +
+                "</style>" +
+                "</head>" +
+                "<body>" +
+                "<img src=\"" + IconWebViewData() + "\" />" +
                 "</body>" +
-                "</html>", "text/html", "utf-8");
-        wView.setBackgroundColor(0x00000000); //Transparent
-        wView.setAlpha(ICON_ALPHA);
+                "</html>";
+        wView.loadData(iconHtml, "text/html", "utf-8");
+        
+        wView.setBackgroundColor(0x00000000); // Transparent
+        wView.setAlpha(ICON_ALPHA + 0.1f); // Slightly more visible
+        
+        // Add modern elevation
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            wView.setElevation(8f);
+            wView.setTranslationZ(4f);
+        }
+        
+        // Better positioning
+        ((ViewGroup.MarginLayoutParams) wView.getLayoutParams()).setMargins(
+            convertDipToPixels(4), convertDipToPixels(12), convertDipToPixels(4), convertDipToPixels(4)
+        );
+        
         wView.setOnTouchListener(onTouchListener());
 
-        //********** Menu Navigation Buttons **********
+        //********** Enhanced Menu Navigation Buttons **********
         final LinearLayout menuNavigation = new LinearLayout(context);
         menuNavigation.setOrientation(LinearLayout.HORIZONTAL);
-        menuNavigation.setPadding(12, 8, 12, 8);
+        menuNavigation.setPadding(16, 12, 16, 12); // More spacious padding
         menuNavigation.setGravity(Gravity.CENTER);
 
-        // Premium navigation background
-        GradientDrawable navBg = new GradientDrawable();
-        navBg.setCornerRadius(8f);
-        navBg.setColor(CARD_BG_COLOR);
-        navBg.setStroke(1, BORDER_COLOR);
+        // Enhanced navigation background with modern styling
+        GradientDrawable navBg = new GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            new int[]{CARD_BG_COLOR, Color.parseColor("#1F1F33"), CARD_BG_COLOR}
+        );
+        navBg.setCornerRadius(12f); // More rounded for modern look
+        navBg.setStroke(2, BORDER_COLOR); // Thicker border
+        
+        // Add subtle inner shadow effect
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            menuNavigation.setElevation(4f);
+        }
         menuNavigation.setBackground(navBg);
+        
+        // Add margin for floating effect
+        LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
+        navParams.setMargins(8, 4, 8, 8);
+        menuNavigation.setLayoutParams(navParams);
 
         // Only 3 menus with custom names
         String[] menuTitles = {"AIMBOT", "WALLHACK", "EXTRAS"};
@@ -244,21 +316,34 @@ public class Menu {
             Button menuBtn = new Button(context);
             menuBtn.setText(menuTitles[i]);
             menuBtn.setTextColor(TEXT_COLOR_2);
-            menuBtn.setTextSize(11.0f);
-            menuBtn.setTypeface(Typeface.DEFAULT_BOLD);
-
-            // Premium menu button styling
-            GradientDrawable menuBtnBg = new GradientDrawable();
-            menuBtnBg.setCornerRadius(16f);
-            menuBtnBg.setColor(BTN_COLOR);
-            menuBtnBg.setStroke(1, BORDER_COLOR);
+            menuBtn.setTextSize(11.5f); // Slightly larger text
+            menuBtn.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+            
+            // Enhanced menu button styling with modern design
+            GradientDrawable menuBtnBg = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{BTN_COLOR, BTN_HOVER_COLOR}
+            );
+            menuBtnBg.setCornerRadius(18f); // More rounded
+            menuBtnBg.setStroke(2, BORDER_COLOR); // Thicker border
+            
+            // Add modern shadow effect
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                menuBtn.setElevation(3f);
+                menuBtn.setStateListAnimator(null); // Remove default animation
+            }
             menuBtn.setBackground(menuBtnBg);
 
             LinearLayout.LayoutParams menuBtnParams = new LinearLayout.LayoutParams(0, WRAP_CONTENT);
             menuBtnParams.weight = 1.0f;
-            menuBtnParams.setMargins(3, 0, 3, 0);
+            menuBtnParams.setMargins(4, 2, 4, 2); // Better spacing
             menuBtn.setLayoutParams(menuBtnParams);
-            menuBtn.setPadding(8, 8, 8, 8);
+            menuBtn.setPadding(12, 12, 12, 12); // More padding for better touch area
+            
+            // Add subtle text shadow for depth
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                menuBtn.setLetterSpacing(0.05f);
+            }
 
             menuButtons[i] = menuBtn;
 
@@ -287,20 +372,39 @@ public class Menu {
 
                     // Update visual state immediately for better responsiveness
                     for (int j = 0; j < menuButtons.length; j++) {
-                        GradientDrawable bg = new GradientDrawable();
-                        bg.setCornerRadius(16f);
                         if (j == buttonIndex) {
-                            // Active button styling
-                            bg.setColor(TEXT_COLOR_ACCENT);
-                            bg.setStroke(2, Color.parseColor("#FFFFFF"));
+                            // Enhanced active button styling with glow effect
+                            GradientDrawable activeBg = new GradientDrawable(
+                                GradientDrawable.Orientation.TOP_BOTTOM,
+                                new int[]{TEXT_COLOR_ACCENT, Color.parseColor("#9C5AFF"), TEXT_COLOR_ACCENT}
+                            );
+                            activeBg.setCornerRadius(18f);
+                            activeBg.setStroke(3, Color.parseColor("#FFFFFF"));
+                            menuButtons[j].setBackground(activeBg);
                             menuButtons[j].setTextColor(Color.parseColor("#FFFFFF"));
+                            
+                            // Add glow effect for active button
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                menuButtons[j].setElevation(6f);
+                                menuButtons[j].setTranslationZ(2f);
+                            }
                         } else {
-                            // Inactive button styling
-                            bg.setColor(BTN_COLOR);
-                            bg.setStroke(1, BORDER_COLOR);
+                            // Enhanced inactive button styling
+                            GradientDrawable inactiveBg = new GradientDrawable(
+                                GradientDrawable.Orientation.TOP_BOTTOM,
+                                new int[]{BTN_COLOR, BTN_HOVER_COLOR}
+                            );
+                            inactiveBg.setCornerRadius(18f);
+                            inactiveBg.setStroke(2, BORDER_COLOR);
+                            menuButtons[j].setBackground(inactiveBg);
                             menuButtons[j].setTextColor(TEXT_COLOR_2);
+                            
+                            // Reset elevation for inactive buttons
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                menuButtons[j].setElevation(3f);
+                                menuButtons[j].setTranslationZ(0f);
+                            }
                         }
-                        menuButtons[j].setBackground(bg);
                     }
 
                     // Use cached executor for better performance
@@ -355,14 +459,23 @@ public class Menu {
             menuNavigation.addView(menuBtn);
         }
 
-        // Set initial active state for first menu
+        // Set enhanced initial active state for first menu
         if (menuButtons.length > 0) {
-            GradientDrawable activeBg = new GradientDrawable();
-            activeBg.setCornerRadius(16f);
-            activeBg.setColor(TEXT_COLOR_ACCENT);
-            activeBg.setStroke(2, Color.parseColor("#FFFFFF"));
+            // Enhanced active button styling with glow effect
+            GradientDrawable activeBg = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{TEXT_COLOR_ACCENT, Color.parseColor("#9C5AFF"), TEXT_COLOR_ACCENT}
+            );
+            activeBg.setCornerRadius(18f);
+            activeBg.setStroke(3, Color.parseColor("#FFFFFF"));
             menuButtons[0].setBackground(activeBg);
             menuButtons[0].setTextColor(Color.parseColor("#FFFFFF"));
+            
+            // Add initial glow effect
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                menuButtons[0].setElevation(6f);
+                menuButtons[0].setTranslationZ(2f);
+            }
         }
 
         //********** Settings **********
@@ -370,53 +483,88 @@ public class Menu {
         mSettings.setOrientation(LinearLayout.VERTICAL);
         featureList(SettingsList(), mSettings);
 
-        //********** Premium Galaxy Title with Circles **********
+        //********** Enhanced Premium Galaxy Title with Animated Elements **********
         RelativeLayout titleText = new RelativeLayout(getContext);
-        titleText.setPadding(16, 12, 16, 12);
+        titleText.setPadding(20, 16, 20, 16); // More spacious padding
         titleText.setGravity(Gravity.CENTER);
 
-        // Premium title background with smooth animation
-        GradientDrawable titleBg = new GradientDrawable();
-        titleBg.setCornerRadius(8f);
-        titleBg.setColor(CARD_BG_COLOR);
-        titleBg.setStroke(1, BORDER_COLOR);
+        // Enhanced title background with modern glass effect
+        GradientDrawable titleBg = new GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            new int[]{Color.parseColor("#1E1E2E"), CARD_BG_COLOR, Color.parseColor("#1E1E2E")}
+        );
+        titleBg.setCornerRadius(14f); // More rounded for modern look
+        titleBg.setStroke(2, BORDER_COLOR); // Thicker border
+        
+        // Add elevation and glow effect
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            titleText.setElevation(6f);
+            titleText.setTranslationZ(2f);
+        }
         titleText.setBackground(titleBg);
+        
+        // Add margin for floating effect
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
+        titleParams.setMargins(8, 4, 8, 4);
+        titleText.setLayoutParams(titleParams);
 
-        // Left Circle
+        // Enhanced Left Decorative Element with modern design
         TextView leftCircle = new TextView(context);
-        leftCircle.setText("●");
+        leftCircle.setText("◆"); // Diamond shape for modern look
         leftCircle.setTextColor(TEXT_COLOR_ACCENT);
-        leftCircle.setTextSize(16.0f);
+        leftCircle.setTextSize(18.0f); // Slightly larger
         leftCircle.setGravity(Gravity.CENTER);
+        leftCircle.setTypeface(Typeface.DEFAULT_BOLD);
+        
+        // Add subtle glow effect
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            leftCircle.setElevation(2f);
+        }
+        
         RelativeLayout.LayoutParams leftCircleParams = new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
         leftCircleParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
         leftCircleParams.addRule(RelativeLayout.CENTER_VERTICAL);
-        leftCircleParams.setMargins(8, 0, 0, 0);
+        leftCircleParams.setMargins(12, 0, 0, 0); // More spacing
         leftCircle.setLayoutParams(leftCircleParams);
 
+        // Enhanced Title with modern typography
         TextView title = new TextView(context);
         title.setTextColor(TEXT_COLOR_ACCENT);
-        title.setTextSize(20.0f);
+        title.setTextSize(22.0f); // Larger for better visibility
         title.setGravity(Gravity.CENTER);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTypeface(Typeface.create("sans-serif-light", Typeface.BOLD));
+        
+        // Enhanced typography settings
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            title.setLetterSpacing(0.1f); // Modern spacing
+            title.setLetterSpacing(0.15f); // Increased spacing for premium look
+            title.setElevation(2f); // Subtle elevation
         }
+        
+        // Add subtle text shadow for depth
+        title.setShadowLayer(4f, 0f, 2f, Color.parseColor("#33000000"));
+        
         RelativeLayout.LayoutParams rl = new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
         rl.addRule(RelativeLayout.CENTER_HORIZONTAL);
         rl.addRule(RelativeLayout.CENTER_VERTICAL);
         title.setLayoutParams(rl);
 
-        // Right Circle
+        // Enhanced Right Decorative Element
         TextView rightCircle = new TextView(context);
-        rightCircle.setText("●");
+        rightCircle.setText("◆"); // Diamond shape for modern look
         rightCircle.setTextColor(TEXT_COLOR_ACCENT);
-        rightCircle.setTextSize(16.0f);
+        rightCircle.setTextSize(18.0f); // Slightly larger
         rightCircle.setGravity(Gravity.CENTER);
+        rightCircle.setTypeface(Typeface.DEFAULT_BOLD);
+        
+        // Add subtle glow effect
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            rightCircle.setElevation(2f);
+        }
+        
         RelativeLayout.LayoutParams rightCircleParams = new RelativeLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
         rightCircleParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
         rightCircleParams.addRule(RelativeLayout.CENTER_VERTICAL);
-        rightCircleParams.setMargins(0, 0, 8, 0);
+        rightCircleParams.setMargins(0, 0, 12, 0); // More spacing
         rightCircle.setLayoutParams(rightCircleParams);
 
         // Add smooth pulsing animation for circles
@@ -435,71 +583,137 @@ public class Menu {
             rightPulse.start();
         }
 
-        //********** Premium Subtitle **********
+        //********** Enhanced Premium Subtitle **********
         TextView subTitle = new TextView(context);
         subTitle.setEllipsize(TextUtils.TruncateAt.MARQUEE);
         subTitle.setMarqueeRepeatLimit(-1);
         subTitle.setSingleLine(true);
         subTitle.setSelected(true);
         subTitle.setTextColor(TEXT_COLOR);
-        subTitle.setTextSize(12.0f);
+        subTitle.setTextSize(13.0f); // Slightly larger for better readability
         subTitle.setGravity(Gravity.CENTER);
-        subTitle.setPadding(16, 8, 16, 12);
-        subTitle.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+        subTitle.setPadding(20, 12, 20, 16); // More generous padding
+        subTitle.setTypeface(Typeface.create("sans-serif-light", Typeface.ITALIC)); // Italic for elegance
+        
+        // Enhanced typography and effects
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            subTitle.setLetterSpacing(0.05f);
+            subTitle.setLetterSpacing(0.08f); // More spacing
+            subTitle.setElevation(1f); // Subtle elevation
         }
+        
+        // Add subtle text shadow
+        subTitle.setShadowLayer(2f, 0f, 1f, Color.parseColor("#22000000"));
+        
+        // Create subtle background for subtitle
+        GradientDrawable subTitleBg = new GradientDrawable();
+        subTitleBg.setCornerRadius(8f);
+        subTitleBg.setColor(Color.parseColor("#15FFFFFF")); // Subtle white overlay
+        subTitle.setBackground(subTitleBg);
+        
+        // Add margin for spacing
+        LinearLayout.LayoutParams subTitleParams = new LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
+        subTitleParams.setMargins(12, 4, 12, 8);
+        subTitle.setLayoutParams(subTitleParams);
 
-        //********** Premium Feature List Container **********
+        //********** Enhanced Premium Feature List Container **********
         scrollView = new ScrollView(context);
         scrlLL = new LinearLayout.LayoutParams(MATCH_PARENT, dp(MENU_HEIGHT));
         scrlLLExpanded = new LinearLayout.LayoutParams(mExpanded.getLayoutParams());
         scrlLLExpanded.weight = 1.0f;
         scrollView.setLayoutParams(Preferences.isExpanded ? scrlLLExpanded : scrlLL);
-        scrollView.setPadding(8, 8, 8, 8);
+        scrollView.setPadding(12, 12, 12, 12); // More padding for better content spacing
 
-        // Premium scroll view background
-        GradientDrawable scrollBg = new GradientDrawable();
-        scrollBg.setCornerRadius(8f);
-        scrollBg.setColor(MENU_FEATURE_BG_COLOR);
-        scrollBg.setStroke(1, Color.parseColor("#2A2A3E"));
+        // Enhanced scroll view background with modern glass effect
+        GradientDrawable scrollBg = new GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{MENU_FEATURE_BG_COLOR, Color.parseColor("#1A1628"), MENU_FEATURE_BG_COLOR}
+        );
+        scrollBg.setCornerRadius(12f); // More rounded corners
+        scrollBg.setStroke(2, Color.parseColor("#3A3A5E")); // Better border color
+        
+        // Add modern elevation and shadow
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            scrollView.setElevation(2f);
+            scrollView.setNestedScrollingEnabled(true); // Better scroll performance
+        }
         scrollView.setBackground(scrollBg);
+        
+        // Enhanced scroll performance
+        scrollView.setVerticalScrollBarEnabled(false); // Hide scrollbar for cleaner look
+        scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER); // Remove overscroll glow
+        scrollView.setScrollbarFadingEnabled(true);
+        
+        // Add margin for floating effect
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(MATCH_PARENT, 
+            Preferences.isExpanded ? 0 : dp(MENU_HEIGHT));
+        if (Preferences.isExpanded) {
+            scrollParams.weight = 1.0f;
+        }
+        scrollParams.setMargins(8, 4, 8, 8);
+        scrollView.setLayoutParams(scrollParams);
 
+        // Enhanced main content container
         mods = new LinearLayout(context);
         mods.setOrientation(LinearLayout.VERTICAL);
-        mods.setPadding(8, 8, 8, 8);
+        mods.setPadding(12, 12, 12, 12); // More padding for better spacing
+        
+        // Add subtle background for content separation
+        GradientDrawable modsBg = new GradientDrawable();
+        modsBg.setCornerRadius(8f);
+        modsBg.setColor(Color.parseColor("#08FFFFFF")); // Very subtle white overlay
+        mods.setBackground(modsBg);
 
-        //********** Bottom Button Layout **********
+        //********** Enhanced Bottom Button Layout **********
         LinearLayout bottomButtonLayout = new LinearLayout(context);
         bottomButtonLayout.setOrientation(LinearLayout.HORIZONTAL);
-        bottomButtonLayout.setPadding(8, 6, 8, 6);
+        bottomButtonLayout.setPadding(12, 10, 12, 10); // More padding for better touch targets
         bottomButtonLayout.setGravity(Gravity.CENTER);
 
-        // Premium bottom layout background
-        GradientDrawable bottomBg = new GradientDrawable();
-        bottomBg.setCornerRadius(8f);
-        bottomBg.setColor(CARD_BG_COLOR);
-        bottomBg.setStroke(1, BORDER_COLOR);
+        // Enhanced bottom layout background with modern design
+        GradientDrawable bottomBg = new GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            new int[]{Color.parseColor("#1A1A2E"), CARD_BG_COLOR, Color.parseColor("#1A1A2E")}
+        );
+        bottomBg.setCornerRadius(12f); // More rounded for modern look
+        bottomBg.setStroke(2, BORDER_COLOR); // Thicker border
+        
+        // Add elevation for floating effect
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            bottomButtonLayout.setElevation(4f);
+        }
         bottomButtonLayout.setBackground(bottomBg);
+        
+        // Add margin for floating effect
+        LinearLayout.LayoutParams bottomParams = new LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
+        bottomParams.setMargins(8, 8, 8, 4);
+        bottomButtonLayout.setLayoutParams(bottomParams);
 
-        //**********  Premium Hide/Kill Button **********
+        //**********  Enhanced Premium Hide/Kill Button **********
         Button hideBtn = new Button(context);
         hideBtn.setText("HIDE");
         hideBtn.setTextColor(TEXT_COLOR_2);
-        hideBtn.setTextSize(10.0f);
-        hideBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        hideBtn.setTextSize(10.5f); // Slightly larger text
+        hideBtn.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
 
-        // Premium button styling
-        GradientDrawable hideBtnBg = new GradientDrawable();
-        hideBtnBg.setCornerRadius(16f);
-        hideBtnBg.setColor(BTN_COLOR);
-        hideBtnBg.setStroke(1, Color.parseColor("#F44336"));
+        // Enhanced button styling with modern gradient
+        GradientDrawable hideBtnBg = new GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{BTN_COLOR, Color.parseColor("#1A1A2E")}
+        );
+        hideBtnBg.setCornerRadius(18f); // More rounded
+        hideBtnBg.setStroke(2, Color.parseColor("#F44336")); // Thicker border
+        
+        // Add modern elevation
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            hideBtn.setElevation(3f);
+            hideBtn.setStateListAnimator(null);
+        }
         hideBtn.setBackground(hideBtnBg);
-        hideBtn.setPadding(12, 6, 12, 6);
+        hideBtn.setPadding(16, 10, 16, 10); // Better padding
 
         LinearLayout.LayoutParams hideBtnParams = new LinearLayout.LayoutParams(0, WRAP_CONTENT);
         hideBtnParams.weight = 1.0f;
-        hideBtnParams.setMargins(4, 0, 2, 0);
+        hideBtnParams.setMargins(6, 2, 3, 2); // Better spacing
         hideBtn.setLayoutParams(hideBtnParams);
 
         hideBtn.setOnClickListener(new View.OnClickListener() {
@@ -519,24 +733,32 @@ public class Menu {
             }
         });
 
-        //********** Premium Settings Button **********
+        //********** Enhanced Premium Settings Button **********
         Button settingsBtn = new Button(context);
         settingsBtn.setText("SETTINGS");
         settingsBtn.setTextColor(TEXT_COLOR_ACCENT);
-        settingsBtn.setTextSize(10.0f);
-        settingsBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        settingsBtn.setTextSize(10.5f); // Slightly larger text
+        settingsBtn.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
 
-        // Premium settings button styling
-        GradientDrawable settingsBtnBg = new GradientDrawable();
-        settingsBtnBg.setCornerRadius(16f);
-        settingsBtnBg.setColor(BTN_COLOR);
-        settingsBtnBg.setStroke(1, TEXT_COLOR_ACCENT);
+        // Enhanced settings button styling with modern gradient
+        GradientDrawable settingsBtnBg = new GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{BTN_COLOR, Color.parseColor("#1A1A2E")}
+        );
+        settingsBtnBg.setCornerRadius(18f); // More rounded
+        settingsBtnBg.setStroke(2, TEXT_COLOR_ACCENT); // Thicker border
+        
+        // Add modern elevation
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settingsBtn.setElevation(3f);
+            settingsBtn.setStateListAnimator(null);
+        }
         settingsBtn.setBackground(settingsBtnBg);
-        settingsBtn.setPadding(12, 6, 12, 6);
+        settingsBtn.setPadding(16, 10, 16, 10); // Better padding
 
         LinearLayout.LayoutParams settingsBtnParams = new LinearLayout.LayoutParams(0, WRAP_CONTENT);
         settingsBtnParams.weight = 1.0f;
-        settingsBtnParams.setMargins(2, 0, 2, 0);
+        settingsBtnParams.setMargins(3, 2, 3, 2); // Better spacing
         settingsBtn.setLayoutParams(settingsBtnParams);
 
         settingsBtn.setOnClickListener(new View.OnClickListener() {
@@ -603,31 +825,52 @@ public class Menu {
             }
         });
 
-        //********** Premium Minimize Button **********
+        //********** Enhanced Premium Minimize Button **********
         Button closeBtn = new Button(context);
         closeBtn.setText("MINIMIZE");
         closeBtn.setTextColor(TEXT_COLOR_2);
-        closeBtn.setTextSize(10.0f);
-        closeBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        closeBtn.setTextSize(10.5f); // Slightly larger text
+        closeBtn.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
 
-        // Premium button styling
-        GradientDrawable closeBtnBg = new GradientDrawable();
-        closeBtnBg.setCornerRadius(16f);
-        closeBtnBg.setColor(BTN_COLOR);
-        closeBtnBg.setStroke(1, BORDER_COLOR);
+        // Enhanced button styling with modern gradient
+        GradientDrawable closeBtnBg = new GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{BTN_COLOR, Color.parseColor("#1A1A2E")}
+        );
+        closeBtnBg.setCornerRadius(18f); // More rounded
+        closeBtnBg.setStroke(2, BORDER_COLOR); // Thicker border
+        
+        // Add modern elevation
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            closeBtn.setElevation(3f);
+            closeBtn.setStateListAnimator(null);
+        }
         closeBtn.setBackground(closeBtnBg);
-        closeBtn.setPadding(12, 6, 12, 6);
+        closeBtn.setPadding(16, 10, 16, 10); // Better padding
 
         LinearLayout.LayoutParams closeBtnParams = new LinearLayout.LayoutParams(0, WRAP_CONTENT);
         closeBtnParams.weight = 1.0f;
-        closeBtnParams.setMargins(2, 0, 4, 0);
+        closeBtnParams.setMargins(3, 2, 6, 2); // Better spacing
         closeBtn.setLayoutParams(closeBtnParams);
 
         closeBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
-                mCollapsed.setVisibility(View.VISIBLE);
-                mCollapsed.setAlpha(ICON_ALPHA);
-                mExpanded.setVisibility(View.GONE);
+                // Add smooth transition animation
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                    mExpanded.animate().alpha(0f).setDuration(200).withEndAction(new Runnable() {
+                        @Override
+                        public void run() {
+                            mExpanded.setVisibility(View.GONE);
+                            mCollapsed.setAlpha(0f);
+                            mCollapsed.setVisibility(View.VISIBLE);
+                            mCollapsed.animate().alpha(ICON_ALPHA).setDuration(300).start();
+                        }
+                    }).start();
+                } else {
+                    mCollapsed.setVisibility(View.VISIBLE);
+                    mCollapsed.setAlpha(ICON_ALPHA);
+                    mExpanded.setVisibility(View.GONE);
+                }
             }
         });
 
@@ -655,6 +898,31 @@ public class Menu {
         mExpanded.addView(bottomButtonLayout);
 
         Init(context, title, subTitle);
+        
+        // Add subtle entrance animations for modern feel
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            // Animate the main container entrance
+            mExpanded.setAlpha(0f);
+            mExpanded.setScaleX(0.9f);
+            mExpanded.setScaleY(0.9f);
+            
+            // Animate the icon entrance
+            startimage.setAlpha(0f);
+            startimage.setScaleX(0.8f);
+            startimage.setScaleY(0.8f);
+            
+            // Staggered animations for elegant entrance
+            mainHandler.postDelayed(() -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                    startimage.animate()
+                        .alpha(ICON_ALPHA)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(400)
+                        .start();
+                }
+            }, 100);
+        }
     }
 
     public void ShowMenu() {
@@ -684,6 +952,32 @@ public class Menu {
                     String[] features = GetFeatureList();
                     if (features != null && features.length > 0) {
                         featureList(features, mods);
+                    }
+                    
+                    // Add beautiful entrance animation when content is loaded
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                        mExpanded.animate()
+                            .alpha(1f)
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(500)
+                            .start();
+                            
+                        // Animate menu navigation with delay
+                        menuNavigation.setAlpha(0f);
+                        menuNavigation.animate()
+                            .alpha(1f)
+                            .setDuration(400)
+                            .setStartDelay(200)
+                            .start();
+                            
+                        // Animate bottom buttons with delay
+                        bottomButtonLayout.setAlpha(0f);
+                        bottomButtonLayout.animate()
+                            .alpha(1f)
+                            .setDuration(400)
+                            .setStartDelay(400)
+                            .start();
                     }
                 }
             }
